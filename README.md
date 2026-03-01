@@ -293,5 +293,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 For issues and feature requests, please use the [GitHub Issues](https://github.com/saad-rd11/paper-drop/issues) page.
 
 ---
-
-**Made with ❤️ for students everywhere**
