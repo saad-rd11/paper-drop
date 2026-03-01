@@ -10,10 +10,23 @@ class AgentScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final agentState = ref.watch(agentProvider(workspaceId));
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return agentState.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: colorScheme.error),
+            const SizedBox(height: 16),
+            Text('Error loading agent', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text('$e', style: theme.textTheme.bodySmall),
+          ],
+        ),
+      ),
       data: (state) => SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -31,7 +44,7 @@ class AgentScreen extends ConsumerWidget {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Text(
                         state.error!,
-                        style: const TextStyle(color: Colors.red),
+                        style: TextStyle(color: colorScheme.error),
                       ),
                     ),
                   SizedBox(
@@ -58,7 +71,6 @@ class AgentScreen extends ConsumerWidget {
                             : 'Analyze Past Papers',
                       ),
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF6C63FF),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                     ),
@@ -104,7 +116,7 @@ class AgentScreen extends ConsumerWidget {
                       state.isGenerating ? 'Generating...' : 'Generate Paper',
                     ),
                     style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF43A047),
+                      backgroundColor: Colors.green,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                   ),
@@ -117,9 +129,9 @@ class AgentScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               Text(
                 'Generated Papers',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 12),
               ...state.papers.map(
@@ -134,7 +146,7 @@ class AgentScreen extends ConsumerWidget {
                       _formatDate(paper.createdAt),
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey.shade600,
+                        color: theme.textTheme.bodySmall?.color,
                       ),
                     ),
                     children: [
@@ -158,13 +170,17 @@ class AgentScreen extends ConsumerWidget {
                       Icon(
                         Icons.school_outlined,
                         size: 48,
-                        color: Colors.grey.shade400,
+                        color: theme.textTheme.bodySmall?.color?.withOpacity(
+                          0.3,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         'Upload past papers and tap Analyze\nto discover patterns',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey.shade600),
+                        style: TextStyle(
+                          color: theme.textTheme.bodySmall?.color,
+                        ),
                       ),
                     ],
                   ),
@@ -198,12 +214,11 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -211,7 +226,7 @@ class _SectionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, color: const Color(0xFF6C63FF), size: 20),
+                Icon(icon, color: colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   title,
@@ -226,7 +241,10 @@ class _SectionCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 subtitle!,
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: theme.textTheme.bodySmall?.color,
+                ),
               ),
             ],
             const SizedBox(height: 16),
@@ -246,6 +264,9 @@ class _AnalysisView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -270,7 +291,7 @@ class _AnalysisView extends StatelessWidget {
                       '${e.key}: ${e.value}',
                       style: const TextStyle(fontSize: 12),
                     ),
-                    backgroundColor: const Color(0xFFEDE7F6),
+                    backgroundColor: colorScheme.primary.withOpacity(0.1),
                   ),
                 )
                 .toList(),
@@ -289,10 +310,7 @@ class _AnalysisView extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '  - ',
-                    style: TextStyle(color: Color(0xFF6C63FF)),
-                  ),
+                  Text('  - ', style: TextStyle(color: colorScheme.primary)),
                   Expanded(
                     child: Text('$p', style: const TextStyle(fontSize: 13)),
                   ),
@@ -306,15 +324,23 @@ class _AnalysisView extends StatelessWidget {
   }
 
   Widget _row(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: Colors.grey.shade700)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ],
-      ),
+    return Builder(
+      builder: (context) {
+        final theme = Theme.of(context);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: TextStyle(color: theme.textTheme.bodySmall?.color),
+              ),
+              Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+            ],
+          ),
+        );
+      },
     );
   }
 }

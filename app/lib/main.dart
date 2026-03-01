@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/constants.dart';
+import 'providers/auth_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,32 +18,40 @@ void main() async {
   runApp(const ProviderScope(child: PaperDropApp()));
 }
 
-class PaperDropApp extends StatelessWidget {
+class PaperDropApp extends ConsumerWidget {
   const PaperDropApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeProvider);
+
     return MaterialApp(
       title: 'PaperDrop',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: const Color(0xFF6C63FF),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
-          elevation: 0,
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-      home: const HomeScreen(),
+      themeMode: themeMode,
+      theme: AppThemes.lightTheme,
+      darkTheme: AppThemes.darkTheme,
+      home: const _AuthGate(),
+    );
+  }
+}
+
+/// Redirects to LoginScreen or HomeScreen based on auth state.
+class _AuthGate extends ConsumerWidget {
+  const _AuthGate();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+
+    return authState.when(
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (_, __) => const LoginScreen(),
+      data: (user) {
+        if (user == null) return const LoginScreen();
+        return const HomeScreen();
+      },
     );
   }
 }

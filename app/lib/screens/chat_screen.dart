@@ -45,6 +45,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(chatProvider(widget.workspaceId));
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Column(
       children: [
@@ -52,7 +54,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         Expanded(
           child: messages.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Error: $e')),
+            error: (e, _) => Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: colorScheme.error),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading messages',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text('$e', style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
             data: (list) {
               if (list.isEmpty) {
                 return Center(
@@ -64,7 +80,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         Icon(
                           Icons.chat_bubble_outline,
                           size: 64,
-                          color: Colors.grey.shade400,
+                          color: theme.textTheme.bodySmall?.color?.withOpacity(
+                            0.3,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -72,13 +90,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 18,
-                            color: Colors.grey.shade600,
+                            color: theme.textTheme.bodySmall?.color,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Upload PDFs in the Documents tab first',
-                          style: TextStyle(color: Colors.grey.shade500),
+                          style: TextStyle(
+                            color: theme.textTheme.bodySmall?.color
+                                ?.withOpacity(0.6),
+                          ),
                         ),
                       ],
                     ),
@@ -102,7 +123,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         // Input bar
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.colorScheme.surface,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -125,7 +146,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         borderSide: BorderSide.none,
                       ),
                       filled: true,
-                      fillColor: const Color(0xFFF0F0F5),
+                      fillColor:
+                          theme.colorScheme.surfaceContainerHighest
+                              ?.withOpacity(0.5) ??
+                          colorScheme.onSurface.withOpacity(0.05),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 20,
                         vertical: 12,
@@ -139,10 +163,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 IconButton.filled(
                   onPressed: _send,
                   icon: const Icon(Icons.send, size: 20),
-                  style: IconButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
-                    foregroundColor: Colors.white,
-                  ),
                 ),
               ],
             ),

@@ -3,7 +3,7 @@
 import google.generativeai as genai
 from config import configure_genai
 
-EMBEDDING_MODEL = "models/text-embedding-004"
+EMBEDDING_MODEL = "models/gemini-embedding-001"
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:

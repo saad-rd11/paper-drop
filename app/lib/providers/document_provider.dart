@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/document.dart';
 import '../services/supabase_service.dart';
@@ -21,7 +21,7 @@ class DocumentsNotifier extends FamilyAsyncNotifier<List<Document>, String> {
       _db.getDocuments(workspaceId);
 
   Future<void> upload({
-    required File file,
+    required Uint8List fileBytes,
     required String fileName,
     required bool isPastPaper,
   }) async {
@@ -29,7 +29,7 @@ class DocumentsNotifier extends FamilyAsyncNotifier<List<Document>, String> {
       // 1. Upload to Supabase
       final doc = await _db.uploadDocument(
         workspaceId: arg,
-        file: file,
+        fileBytes: fileBytes,
         fileName: fileName,
         isPastPaper: isPastPaper,
       );

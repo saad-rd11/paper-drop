@@ -34,7 +34,7 @@ CREATE TABLE document_chunks (
     document_id  UUID REFERENCES documents(id) ON DELETE CASCADE,
     chunk_index  INT NOT NULL,
     content      TEXT NOT NULL,
-    embedding    VECTOR(768),
+    embedding    HALFVEC(3072),
     metadata     JSONB DEFAULT '{}'
 );
 
@@ -65,9 +65,10 @@ CREATE INDEX idx_chunks_document ON document_chunks(document_id);
 CREATE INDEX idx_chat_workspace ON chat_messages(workspace_id, created_at);
 CREATE INDEX idx_papers_workspace ON generated_papers(workspace_id);
 
--- pgvector index for cosine similarity search
+-- pgvector index using halfvec to support 3072 dimensions (Gemini embeddings)
+-- halfvec supports up to 4000 dimensions with hnsw index
 CREATE INDEX idx_chunks_embedding ON document_chunks
-    USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+    USING hnsw ((embedding::halfvec(3072)) halfvec_cosine_ops);
 
 -- ─────────────────────────────────────────────────────────
 -- 4. RPC function for vector similarity search
@@ -75,7 +76,7 @@ CREATE INDEX idx_chunks_embedding ON document_chunks
 -- ─────────────────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION match_chunks(
-    query_embedding VECTOR(768),
+    query_embedding VECTOR(3072),
     match_workspace_id UUID,
     match_threshold FLOAT,
     match_count INT
@@ -102,12 +103,12 @@ BEGIN
         dc.metadata,
         d.file_name,
         (dc.metadata->>'page')::INT AS page,
-        1 - (dc.embedding <=> query_embedding) AS similarity
+        1 - (dc.embedding::halfvec(3072) <=> query_embedding::halfvec(3072)) AS similarity
     FROM document_chunks dc
     JOIN documents d ON d.id = dc.document_id
     WHERE d.workspace_id = match_workspace_id
-      AND 1 - (dc.embedding <=> query_embedding) > match_threshold
-    ORDER BY dc.embedding <=> query_embedding
+      AND 1 - (dc.embedding::halfvec(3072) <=> query_embedding::halfvec(3072)) > match_threshold
+    ORDER BY dc.embedding::halfvec(3072) <=> query_embedding::halfvec(3072)
     LIMIT match_count;
 END;
 $$;
@@ -134,3 +135,24 @@ CREATE POLICY "Allow all on documents" ON documents FOR ALL USING (true) WITH CH
 CREATE POLICY "Allow all on document_chunks" ON document_chunks FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on chat_messages" ON chat_messages FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on generated_papers" ON generated_papers FOR ALL USING (true) WITH CHECK (true);
+
+-- ─────────────────────────────────────────────────────────
+-- 7. Storage RLS Policies (run after creating "pdfs" bucket)
+-- ─────────────────────────────────────────────────────────
+-- These allow the Flutter app (using anon key) to upload/download
+
+-- Allow anon to select (download) from pdfs bucket
+CREATE POLICY "Allow anon downloads" ON storage.objects
+    FOR SELECT USING (bucket_id = 'pdfs');
+
+-- Allow anon to insert (upload) to pdfs bucket
+CREATE POLICY "Allow anon uploads" ON storage.objects
+    FOR INSERT WITH CHECK (bucket_id = 'pdfs');
+
+-- Allow anon to update in pdfs bucket
+CREATE POLICY "Allow anon updates" ON storage.objects
+    FOR UPDATE USING (bucket_id = 'pdfs');
+
+-- Allow anon to delete from pdfs bucket
+CREATE POLICY "Allow anon deletes" ON storage.objects
+    FOR DELETE USING (bucket_id = 'pdfs');

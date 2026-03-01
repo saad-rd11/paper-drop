@@ -186,7 +186,7 @@ def chat(workspace_id: str, user_message: str) -> dict:
     # 4. Generate response
     configure_genai()
     model = genai.GenerativeModel(
-        "gemini-1.5-flash",
+        "models/gemini-2.5-flash",
         system_instruction=SYSTEM_PROMPT,
     )
     response = model.generate_content(messages)
@@ -227,3 +227,99 @@ def chat(workspace_id: str, user_message: str) -> dict:
         ).execute()
 
     return {"reply": reply, "sources": sources}
+
+
+def chat_stream(workspace_id: str, user_message: str):
+    """
+    Streaming version of chat. Yields text chunks as they're generated.
+    """
+    from services.embedder import embed_query
+
+    supabase = get_supabase()
+
+    # 1. Load chat history and summary
+    history_rows = (
+        supabase.table("chat_messages")
+        .select("*")
+        .eq("workspace_id", workspace_id)
+        .order("created_at")
+        .execute()
+    )
+    chat_history = history_rows.data or []
+
+    workspace_row = (
+        supabase.table("workspaces")
+        .select("chat_summary")
+        .eq("id", workspace_id)
+        .single()
+        .execute()
+    )
+    summary = workspace_row.data.get("chat_summary")
+
+    # 2. Rewrite query for better retrieval
+    recent = chat_history[-RECENT_MESSAGE_WINDOW:]
+    search_query = _rewrite_query(user_message, recent)
+    query_embedding = embed_query(search_query)
+
+    # 3. Build context
+    messages, updated_summary, chunks = build_context(
+        workspace_id,
+        user_message,
+        chat_history,
+        summary,
+        query_embedding,
+    )
+
+    # 4. Generate response with streaming
+    configure_genai()
+    model = genai.GenerativeModel(
+        "models/gemini-2.5-flash",
+        system_instruction=SYSTEM_PROMPT,
+    )
+
+    # Build source citations
+    sources = []
+    seen = set()
+    for c in chunks:
+        key = (c.get("file_name", ""), c.get("page", 0))
+        if key not in seen:
+            sources.append({"doc": key[0], "page": key[1]})
+            seen.add(key)
+
+    # Save user message
+    supabase.table("chat_messages").insert(
+        {
+            "workspace_id": workspace_id,
+            "role": "user",
+            "content": user_message,
+            "sources": [],
+        }
+    ).execute()
+
+    full_reply = ""
+
+    # Stream the response
+    response_stream = model.generate_content(messages, stream=True)
+    for chunk in response_stream:
+        if chunk.text:
+            full_reply += chunk.text
+            yield chunk.text
+
+    # Save the complete assistant message
+    supabase.table("chat_messages").insert(
+        {
+            "workspace_id": workspace_id,
+            "role": "assistant",
+            "content": full_reply,
+            "sources": sources,
+        }
+    ).execute()
+
+    # Update summary if changed
+    if updated_summary != (summary or ""):
+        supabase.table("workspaces").update({"chat_summary": updated_summary}).eq(
+            "id", workspace_id
+        ).execute()
+
+    # Send sources at the end
+    yield json.dumps({"sources": sources})

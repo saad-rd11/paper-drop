@@ -73,9 +73,9 @@ def analyze_past_papers(workspace_id: str) -> dict:
 
     papers_text = "\n\n".join(all_text_parts)
 
-    # Send to Gemini Pro for analysis
+    # Send to Gemini for analysis
     configure_genai()
-    model = genai.GenerativeModel("gemini-1.5-pro")
+    model = genai.GenerativeModel("models/gemini-2.5-flash")
     prompt = ANALYSIS_PROMPT.format(papers_text=papers_text)
     response = model.generate_content(prompt)
 
@@ -155,9 +155,9 @@ def generate_paper(workspace_id: str, analysis: dict) -> dict:
     if not study_chunks_text:
         study_chunks_text = "(No study material available. Generate questions based on the topics in the analysis.)"
 
-    # Generate with Gemini Pro
+    # Generate with Gemini
     configure_genai()
-    model = genai.GenerativeModel("gemini-1.5-pro")
+    model = genai.GenerativeModel("models/gemini-2.5-flash")
     prompt = GENERATION_PROMPT.format(
         analysis_json=json.dumps(analysis, indent=2),
         study_chunks=study_chunks_text[:8000],  # cap context size

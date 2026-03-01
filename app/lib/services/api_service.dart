@@ -46,6 +46,46 @@ class ApiService {
     return response.data as Map<String, dynamic>;
   }
 
+  /// Stream a chat response using Server-Sent Events (SSE).
+  /// Returns a stream of text chunks.
+  Stream<String> chatStream({
+    required String workspaceId,
+    required String message,
+  }) async* {
+    final response = await _dio.get(
+      '/chat/stream',
+      queryParameters: {'workspace_id': workspaceId, 'message': message},
+      options: Options(responseType: ResponseType.stream),
+    );
+
+    final stream = response.data as ResponseBody;
+    final buffer = StringBuffer();
+
+    await for (final chunk in stream.stream) {
+      final text = String.fromCharCodes(chunk);
+      buffer.write(text);
+
+      // Process complete SSE lines
+      final lines = buffer.toString().split('\n');
+      buffer.clear();
+
+      // Keep the last incomplete line in buffer
+      if (!text.endsWith('\n')) {
+        buffer.write(lines.last);
+        lines.removeLast();
+      }
+
+      for (final line in lines) {
+        if (line.startsWith('data: ')) {
+          final data = line.substring(6);
+          if (data == '[DONE]') return;
+          if (data.startsWith('ERROR:')) throw Exception(data);
+          yield data;
+        }
+      }
+    }
+  }
+
   // ── Agent ──────────────────────────────────────────────────
 
   /// Analyze past papers in a workspace.

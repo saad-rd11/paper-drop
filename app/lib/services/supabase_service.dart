@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/workspace.dart';
 import '../models/document.dart';
@@ -9,12 +9,20 @@ import '../config/constants.dart';
 class SupabaseService {
   final SupabaseClient _client = Supabase.instance.client;
 
+  /// Current authenticated user's ID (throws if not logged in).
+  String get _userId {
+    final user = _client.auth.currentUser;
+    if (user == null) throw Exception('Not authenticated');
+    return user.id;
+  }
+
   // ── Workspaces ──────────────────────────────────────────────
 
   Future<List<Workspace>> getWorkspaces() async {
     final data = await _client
         .from('workspaces')
         .select()
+        .eq('user_id', _userId)
         .order('created_at', ascending: false);
     return data.map((json) => Workspace.fromJson(json)).toList();
   }
@@ -22,7 +30,7 @@ class SupabaseService {
   Future<Workspace> createWorkspace(String name, String description) async {
     final data = await _client
         .from('workspaces')
-        .insert({'name': name, 'description': description})
+        .insert({'name': name, 'description': description, 'user_id': _userId})
         .select()
         .single();
     return Workspace.fromJson(data);
@@ -55,6 +63,17 @@ class SupabaseService {
     return Workspace.fromJson(data);
   }
 
+  Future<void> renameWorkspace(
+    String id,
+    String name,
+    String description,
+  ) async {
+    await _client
+        .from('workspaces')
+        .update({'name': name, 'description': description})
+        .eq('id', id);
+  }
+
   // ── Documents ───────────────────────────────────────────────
 
   Future<List<Document>> getDocuments(String workspaceId) async {
@@ -68,7 +87,7 @@ class SupabaseService {
 
   Future<Document> uploadDocument({
     required String workspaceId,
-    required File file,
+    required Uint8List fileBytes,
     required String fileName,
     required bool isPastPaper,
   }) async {
@@ -85,13 +104,13 @@ class SupabaseService {
         .single();
     final docId = docData['id'] as String;
 
-    // 2. Upload to storage
+    // 2. Upload bytes to storage (works on web + mobile)
     final storagePath = '$workspaceId/$docId.pdf';
     await _client.storage
         .from(AppConstants.pdfBucket)
-        .upload(
+        .uploadBinary(
           storagePath,
-          file,
+          fileBytes,
           fileOptions: const FileOptions(contentType: 'application/pdf'),
         );
 

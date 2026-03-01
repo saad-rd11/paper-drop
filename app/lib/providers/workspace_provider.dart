@@ -42,4 +42,13 @@ class WorkspacesNotifier extends AsyncNotifier<List<Workspace>> {
       state = AsyncError(e, st);
     }
   }
+
+  Future<void> rename(String id, String name, String description) async {
+    try {
+      await _db.renameWorkspace(id, name, description);
+      state = AsyncData(await _db.getWorkspaces());
+    } catch (e, st) {
+      state = AsyncError(e, st);
+    }
+  }
 }

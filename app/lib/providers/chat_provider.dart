@@ -10,6 +10,11 @@ final chatProvider =
       ChatNotifier.new,
     );
 
+/// Provider to track the currently streaming response text
+final streamingResponseProvider = StateProvider.family<String, String>(
+  (ref, workspaceId) => '',
+);
+
 class ChatNotifier extends FamilyAsyncNotifier<List<ChatMessage>, String> {
   SupabaseService get _db => ref.read(supabaseServiceProvider);
   ApiService get _api => ref.read(apiServiceProvider);
@@ -21,7 +26,7 @@ class ChatNotifier extends FamilyAsyncNotifier<List<ChatMessage>, String> {
   Future<List<ChatMessage>> build(String workspaceId) =>
       _db.getChatMessages(workspaceId);
 
-  /// Send a message, get AI response, save both to DB.
+  /// Send a message and stream the AI response.
   Future<void> send(String message) async {
     if (_sending) return;
     _sending = true;
@@ -38,20 +43,47 @@ class ChatNotifier extends FamilyAsyncNotifier<List<ChatMessage>, String> {
     );
     state = AsyncData([...current, userMsg]);
 
-    try {
-      // Call backend RAG chat
-      await _api.chat(workspaceId: arg, message: message);
+    // Create a placeholder for the streaming response
+    final streamingMsgId = 'stream-${DateTime.now().millisecondsSinceEpoch}';
+    final streamingMsg = ChatMessage(
+      id: streamingMsgId,
+      workspaceId: arg,
+      role: 'assistant',
+      content: '',
+      createdAt: DateTime.now(),
+    );
+    state = AsyncData([...current, userMsg, streamingMsg]);
 
-      // Refresh from DB (backend saves both messages)
+    try {
+      // Stream the response
+      final buffer = StringBuffer();
+      await for (final chunk in _api.chatStream(
+        workspaceId: arg,
+        message: message,
+      )) {
+        buffer.write(chunk);
+
+        // Update the streaming response in real-time
+        final updatedMsg = ChatMessage(
+          id: streamingMsgId,
+          workspaceId: arg,
+          role: 'assistant',
+          content: buffer.toString(),
+          createdAt: streamingMsg.createdAt,
+        );
+        state = AsyncData([...current, userMsg, updatedMsg]);
+      }
+
+      // Refresh from DB to get the final saved message with sources
       state = AsyncData(await _db.getChatMessages(arg));
     } catch (e) {
-      // On error, add an error message locally
+      // On error, update the streaming message with error text
       final errMsg = ChatMessage(
-        id: 'err-${DateTime.now().millisecondsSinceEpoch}',
+        id: streamingMsgId,
         workspaceId: arg,
         role: 'assistant',
         content: 'Failed to get response. Check your connection and try again.',
-        createdAt: DateTime.now(),
+        createdAt: streamingMsg.createdAt,
       );
       state = AsyncData([...current, userMsg, errMsg]);
     } finally {
