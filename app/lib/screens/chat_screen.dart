@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/chat_message.dart';
 import '../providers/chat_provider.dart';
 import '../widgets/chat_bubble.dart';
 
@@ -11,12 +12,24 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> {
+class _ChatScreenState extends ConsumerState<ChatScreen>
+    with SingleTickerProviderStateMixin {
   final _controller = TextEditingController();
   final _scrollCtrl = ScrollController();
+  late AnimationController _rotationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _rotationController = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    )..repeat();
+  }
 
   @override
   void dispose() {
+    _rotationController.dispose();
     _controller.dispose();
     _scrollCtrl.dispose();
     super.dispose();
@@ -53,7 +66,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         // Messages
         Expanded(
           child: messages.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => Center(
+              child: RotationTransition(
+                turns: _rotationController,
+                child: const CircularProgressIndicator(),
+              ),
+            ),
             error: (e, _) => Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -114,7 +132,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   vertical: 12,
                 ),
                 itemCount: list.length,
-                itemBuilder: (_, i) => ChatBubble(message: list[i]),
+                itemBuilder: (_, i) =>
+                    _AnimatedChatBubble(message: list[i], index: i),
               );
             },
           ),
@@ -169,6 +188,50 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AnimatedChatBubble extends StatefulWidget {
+  final ChatMessage message;
+  final int index;
+
+  const _AnimatedChatBubble({required this.message, required this.index});
+
+  @override
+  State<_AnimatedChatBubble> createState() => _AnimatedChatBubbleState();
+}
+
+class _AnimatedChatBubbleState extends State<_AnimatedChatBubble>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+
+    Future.delayed(Duration(milliseconds: widget.index * 50), () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: ChatBubble(message: widget.message),
     );
   }
 }

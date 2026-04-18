@@ -8,6 +8,7 @@ import '../widgets/workspace_card.dart';
 import '../widgets/workspace_grid_card.dart';
 import '../widgets/logo.dart';
 import '../screens/settings_screen.dart';
+import '../utils/page_transitions.dart';
 
 // View mode provider
 final viewModeProvider = StateProvider<bool>(

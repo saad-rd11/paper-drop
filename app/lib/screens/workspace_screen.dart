@@ -39,18 +39,24 @@ class _WorkspaceScreenState extends ConsumerState<WorkspaceScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            const PaperDropIcon(size: 32),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                widget.workspace.name,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-                overflow: TextOverflow.ellipsis,
-              ),
+        title: Hero(
+          tag: 'workspace_hero_${widget.workspace.id}',
+          child: Material(
+            color: Colors.transparent,
+            child: Row(
+              children: [
+                const PaperDropIcon(size: 32),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    widget.workspace.name,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
         elevation: 0,
         bottom: TabBar(

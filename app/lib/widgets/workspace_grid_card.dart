@@ -81,156 +81,161 @@ class _WorkspaceGridCardState extends ConsumerState<WorkspaceGridCard>
           onTapCancel: _onTapCancel,
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => WorkspaceScreen(workspace: widget.workspace),
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) =>
+                  WorkspaceScreen(workspace: widget.workspace),
+              transitionsBuilder: (_, animation, __, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              transitionDuration: const Duration(milliseconds: 300),
             ),
           ),
-          child: Card(
-            clipBehavior: Clip.antiAlias,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    colorScheme.surface,
-                    colorScheme.surface.withOpacity(0.8),
-                  ],
+          child: Hero(
+            tag: 'workspace_hero_${widget.workspace.id}',
+            child: Card(
+              clipBehavior: Clip.antiAlias,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      colorScheme.surface,
+                      colorScheme.surface.withOpacity(0.8),
+                    ],
+                  ),
                 ),
-              ),
-              child: Stack(
-                children: [
-                  // Animated background glow
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 300),
-                    top: _isHovered ? -50 : -100,
-                    right: _isHovered ? -30 : -50,
-                    child: AnimatedContainer(
+                child: Stack(
+                  children: [
+                    AnimatedPositioned(
                       duration: const Duration(milliseconds: 300),
-                      width: _isHovered ? 150 : 100,
-                      height: _isHovered ? 150 : 100,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            colorScheme.primary.withOpacity(
-                              _isHovered ? 0.3 : 0.1,
-                            ),
-                            Colors.transparent,
-                          ],
+                      top: _isHovered ? -50 : -100,
+                      right: _isHovered ? -30 : -50,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: _isHovered ? 150 : 100,
+                        height: _isHovered ? 150 : 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              colorScheme.primary.withOpacity(
+                                _isHovered ? 0.3 : 0.1,
+                              ),
+                              Colors.transparent,
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header with icon and menu
-                        Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    colorScheme.primary,
-                                    colorScheme.secondary,
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      colorScheme.primary,
+                                      colorScheme.secondary,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: colorScheme.primary.withOpacity(
+                                        0.3,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
                                   ],
                                 ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colorScheme.primary.withOpacity(0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
+                                child: const Icon(
+                                  Icons.folder_outlined,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
                               ),
-                              child: const Icon(
-                                Icons.folder_outlined,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            ),
-                            const Spacer(),
-                            _buildPopupMenu(),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Title
-                        Text(
-                          widget.workspace.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
+                              const Spacer(),
+                              _buildPopupMenu(),
+                            ],
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
 
-                        if (widget.workspace.description.isNotEmpty) ...[
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 16),
+
                           Text(
-                            widget.workspace.description,
-                            style: TextStyle(
-                              color: theme.textTheme.bodySmall?.color,
-                              fontSize: 12,
+                            widget.workspace.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        ],
 
-                        const Spacer(),
-
-                        // Stats chips
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: [
-                            _StatChip(
-                              icon: Icons.description_outlined,
-                              label: '${widget.documentCount}',
-                              theme: theme,
+                          if (widget.workspace.description.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.workspace.description,
+                              style: TextStyle(
+                                color: theme.textTheme.bodySmall?.color,
+                                fontSize: 12,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            if (widget.pastPaperCount > 0)
-                              _StatChip(
-                                icon: Icons.history_edu,
-                                label: '${widget.pastPaperCount}',
-                                theme: theme,
-                                isHighlighted: true,
-                              ),
-                            if (widget.generatedPaperCount > 0)
-                              _StatChip(
-                                icon: Icons.auto_awesome,
-                                label: '${widget.generatedPaperCount}',
-                                theme: theme,
-                                isHighlighted: true,
-                              ),
                           ],
-                        ),
 
-                        const SizedBox(height: 8),
+                          const Spacer(),
 
-                        // Date
-                        Text(
-                          _formatDate(widget.workspace.createdAt),
-                          style: TextStyle(
-                            color: theme.textTheme.bodySmall?.color
-                                ?.withOpacity(0.6),
-                            fontSize: 11,
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              _StatChip(
+                                icon: Icons.description_outlined,
+                                label: '${widget.documentCount}',
+                                theme: theme,
+                              ),
+                              if (widget.pastPaperCount > 0)
+                                _StatChip(
+                                  icon: Icons.history_edu,
+                                  label: '${widget.pastPaperCount}',
+                                  theme: theme,
+                                  isHighlighted: true,
+                                ),
+                              if (widget.generatedPaperCount > 0)
+                                _StatChip(
+                                  icon: Icons.auto_awesome,
+                                  label: '${widget.generatedPaperCount}',
+                                  theme: theme,
+                                  isHighlighted: true,
+                                ),
+                            ],
                           ),
-                        ),
-                      ],
+
+                          const SizedBox(height: 8),
+
+                          Text(
+                            _formatDate(widget.workspace.createdAt),
+                            style: TextStyle(
+                              color: theme.textTheme.bodySmall?.color
+                                  ?.withOpacity(0.6),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
